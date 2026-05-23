@@ -11,6 +11,6 @@ public partial class MainPage : ContentPage
 
 	private void materialSwitch_ValueChanged(object sender, MauiMaterial.Controls.Switch.SwitchValueChangedEventArgs e)
 	{
-		Debug.WriteLine($"[Material] Switch value changed from {e.OldValue} to {e.NewValue}");
+		Debug.WriteLine($"[Material controls] Switch value changed from {e.OldValue} to {e.NewValue}");
 	}
 }

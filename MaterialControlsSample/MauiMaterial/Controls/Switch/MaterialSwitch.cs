@@ -51,15 +51,25 @@ public class MaterialSwitch : GraphicsView, IMaterialSwitch
         SemanticProperties.SetHint(this, "Double tap to toggle");
     }
 
+    protected override void OnHandlerChanged()
+    {
+        base.OnHandlerChanged();
+        if (Handler is not null && Application.Current is not null)
+            Application.Current.RequestedThemeChanged += OnAppThemeChanged;
+    }
+
     protected override void OnHandlerChanging(HandlerChangingEventArgs args)
     {
         if (args.NewHandler is null)
         {
             this.AbortAnimation("ThumbPosition");
+            if (Application.Current is not null)
+                Application.Current.RequestedThemeChanged -= OnAppThemeChanged;
         }
-
         base.OnHandlerChanging(args);
     }
+
+    void OnAppThemeChanged(object? sender, AppThemeChangedEventArgs e) => Invalidate();
 
     void AnimateThumbToCheckedState(bool newCheckedState)
     {
@@ -124,6 +134,14 @@ public class MaterialSwitch : GraphicsView, IMaterialSwitch
 
         public void Draw(ICanvas canvas, RectF dirtyRect)
         {
+            bool isDark = Application.Current?.RequestedTheme == AppTheme.Dark;
+
+            Color trackOffColor = isDark ? MaterialColors.M3SurfaceContainerHighestDark : MaterialColors.M3SurfaceContainerHighestLight;
+            Color trackOnColor  = isDark ? MaterialColors.M3PrimaryDark              : MaterialColors.M3PrimaryLight;
+            Color outlineColor  = isDark ? MaterialColors.M3OutlineDark               : MaterialColors.M3OutlineLight;
+            Color thumbOffColor = isDark ? MaterialColors.M3OutlineDark               : MaterialColors.M3OutlineLight;
+            Color thumbOnColor  = isDark ? MaterialColors.M3OnPrimaryDark             : MaterialColors.M3OnPrimaryLight;
+
             float inset = TrackOutlineWidth / 2f;
             float trackX = dirtyRect.X + inset;
             float trackY = dirtyRect.Y + inset;
@@ -134,18 +152,13 @@ public class MaterialSwitch : GraphicsView, IMaterialSwitch
             float t = Math.Clamp(_switch._thumbPosition, 0f, 1f);
 
             // Interpolate track fill: surface-container-highest -> primary.
-            Color trackFill = InterpolateColor(
-                MaterialColors.M3SurfaceContainerHighestLight,
-                MaterialColors.M3PrimaryLight,
-                t);
-            canvas.FillColor = trackFill;
+            canvas.FillColor = InterpolateColor(trackOffColor, trackOnColor, t);
             canvas.FillRoundedRectangle(trackX, trackY, trackW, trackH, trackRadius);
 
             // Outline fades out as we move to the on state.
             if (t < 1f)
             {
-                var outline = MaterialColors.M3OutlineLight;
-                canvas.StrokeColor = new Color(outline.Red, outline.Green, outline.Blue, outline.Alpha * (1f - t));
+                canvas.StrokeColor = new Color(outlineColor.Red, outlineColor.Green, outlineColor.Blue, outlineColor.Alpha * (1f - t));
                 canvas.StrokeSize = TrackOutlineWidth;
                 canvas.DrawRoundedRectangle(trackX, trackY, trackW, trackH, trackRadius);
             }
@@ -161,10 +174,7 @@ public class MaterialSwitch : GraphicsView, IMaterialSwitch
             float thumbY = dirtyRect.Y + padding;
 
             // Thumb color: outline -> on-primary.
-            canvas.FillColor = InterpolateColor(
-                MaterialColors.M3OutlineLight,
-                MaterialColors.M3OnPrimaryLight,
-                t);
+            canvas.FillColor = InterpolateColor(thumbOffColor, thumbOnColor, t);
             canvas.FillEllipse(thumbX, thumbY, thumbD, thumbD);
         }
 
