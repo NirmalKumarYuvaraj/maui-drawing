@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="MaterialControlsSample/MaterialControlsSample.csproj" />
+  <Project Path="MauiMaterial/MauiMaterial.csproj" />
+</Solution>
