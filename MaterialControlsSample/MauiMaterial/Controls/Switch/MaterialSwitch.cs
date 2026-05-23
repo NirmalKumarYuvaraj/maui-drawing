@@ -12,6 +12,8 @@ public class MaterialSwitch : GraphicsView, IMaterialSwitch
 
     // Animated thumb position: 0 = off (left), 1 = on (right).
     internal float _thumbPosition;
+    // Animated halo opacity: 0 = hidden, 1 = fully visible (pointer hover).
+    internal float _haloOpacity;
 
     public static readonly BindableProperty ValueProperty =
         BindableProperty.Create(nameof(Value), typeof(bool), typeof(MaterialSwitch), false,
@@ -43,6 +45,7 @@ public class MaterialSwitch : GraphicsView, IMaterialSwitch
     public MaterialSwitch()
     {
         Drawable = new SwitchDrawable(this);
+        BackgroundColor = Colors.Red;
         SetupGestureRecognizers();
         WidthRequest = _defaultTrackWidth;
         HeightRequest = _defaultTrackHeight;
@@ -63,6 +66,7 @@ public class MaterialSwitch : GraphicsView, IMaterialSwitch
         if (args.NewHandler is null)
         {
             this.AbortAnimation("ThumbPosition");
+            this.AbortAnimation("HaloOpacity");
             if (Application.Current is not null)
                 Application.Current.RequestedThemeChanged -= OnAppThemeChanged;
         }
@@ -113,10 +117,32 @@ public class MaterialSwitch : GraphicsView, IMaterialSwitch
     {
         GestureRecognizers.Add(new TapGestureRecognizer
         {
-            Command = new Command(() =>
+            Command = new Command(() => Value = !Value)
+        });
+
+        var pointer = new PointerGestureRecognizer();
+        pointer.PointerEntered += (_, _) => AnimateHalo(show: true);
+        pointer.PointerExited += (_, _) => AnimateHalo(show: false);
+        GestureRecognizers.Add(pointer);
+    }
+
+    void AnimateHalo(bool show)
+    {
+        this.AbortAnimation("HaloOpacity");
+        float target = show ? 1f : 0f;
+        var animation = new Animation(v =>
+        {
+            _haloOpacity = (float)v;
+            Invalidate();
+        }, _haloOpacity, target, Easing.CubicOut);
+
+        animation.Commit(this, "HaloOpacity", 16, 150, finished: (v, cancelled) =>
+        {
+            if (!cancelled)
             {
-                Value = !Value;
-            })
+                _haloOpacity = target;
+                Invalidate();
+            }
         });
     }
 
@@ -137,10 +163,10 @@ public class MaterialSwitch : GraphicsView, IMaterialSwitch
             bool isDark = Application.Current?.RequestedTheme == AppTheme.Dark;
 
             Color trackOffColor = isDark ? MaterialColors.M3SurfaceContainerHighestDark : MaterialColors.M3SurfaceContainerHighestLight;
-            Color trackOnColor  = isDark ? MaterialColors.M3PrimaryDark              : MaterialColors.M3PrimaryLight;
-            Color outlineColor  = isDark ? MaterialColors.M3OutlineDark               : MaterialColors.M3OutlineLight;
-            Color thumbOffColor = isDark ? MaterialColors.M3OutlineDark               : MaterialColors.M3OutlineLight;
-            Color thumbOnColor  = isDark ? MaterialColors.M3OnPrimaryDark             : MaterialColors.M3OnPrimaryLight;
+            Color trackOnColor = isDark ? MaterialColors.M3PrimaryDark : MaterialColors.M3PrimaryLight;
+            Color outlineColor = isDark ? MaterialColors.M3OutlineDark : MaterialColors.M3OutlineLight;
+            Color thumbOffColor = isDark ? MaterialColors.M3OutlineDark : MaterialColors.M3OutlineLight;
+            Color thumbOnColor = isDark ? MaterialColors.M3OnPrimaryDark : MaterialColors.M3OnPrimaryLight;
 
             float inset = TrackOutlineWidth / 2f;
             float trackX = dirtyRect.X + inset;
@@ -172,6 +198,22 @@ public class MaterialSwitch : GraphicsView, IMaterialSwitch
             float thumbXOn = dirtyRect.X + dirtyRect.Width - thumbD - padding;
             float thumbX = thumbXOff + (thumbXOn - thumbXOff) * t;
             float thumbY = dirtyRect.Y + padding;
+
+            // Halo (state layer) centered on thumb, drawn before thumb so thumb renders on top.
+            float haloOpacity = Math.Clamp(_switch._haloOpacity, 0f, 1f);
+            if (haloOpacity > 0f)
+            {
+                // M3 hover state layer color: on-surface-variant (off) blends to on-primary (on) at 8% opacity.
+                Color haloBaseOff = isDark ? MaterialColors.M3OnSurfaceVariantDark : MaterialColors.M3OnSurfaceVariantLight;
+                Color haloBaseOn = isDark ? MaterialColors.M3OnPrimaryDark : MaterialColors.M3OnPrimaryLight;
+                Color haloBase = InterpolateColor(haloBaseOff, haloBaseOn, t);
+
+                const float HaloDiameter = 40f;
+                float thumbCenterX = thumbX + thumbD / 2f;
+                float thumbCenterY = thumbY + thumbD / 2f;
+                canvas.FillColor = new Color(haloBase.Red, haloBase.Green, haloBase.Blue, 0.08f * haloOpacity);
+                canvas.FillEllipse(thumbCenterX - HaloDiameter / 2f, thumbCenterY - HaloDiameter / 2f, HaloDiameter, HaloDiameter);
+            }
 
             // Thumb color: outline -> on-primary.
             canvas.FillColor = InterpolateColor(thumbOffColor, thumbOnColor, t);
