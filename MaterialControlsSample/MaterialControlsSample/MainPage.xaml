@@ -1,5 +1,17 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:material="clr-namespace:MauiMaterial.Controls;assembly=MauiMaterial"
              x:Class="MaterialControlsSample.MainPage">
+
+    <ScrollView>
+        <StackLayout Padding="20"
+                     Spacing="20">
+            <Label Text="Material Switch"
+                   FontSize="Large"
+                   HorizontalOptions="Center"/>
+            <material:MaterialSwitch x:Name="materialSwitch"
+                                     HorizontalOptions="Center"/>
+        </StackLayout>
+    </ScrollView>
 </ContentPage>
