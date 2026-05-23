@@ -11,6 +11,7 @@
                    FontSize="Large"
                    HorizontalOptions="Center"/>
             <material:MaterialSwitch x:Name="materialSwitch"
+                    ValueChanged="materialSwitch_ValueChanged"
                                      HorizontalOptions="Center"/>
         </StackLayout>
     </ScrollView>

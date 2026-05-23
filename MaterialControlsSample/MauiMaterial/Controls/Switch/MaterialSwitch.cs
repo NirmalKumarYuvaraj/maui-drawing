@@ -1,3 +1,4 @@
+using MauiMaterial.Controls.Switch;
 using MauiMaterial.Core;
 using MauiMaterial.Helper;
 
@@ -5,8 +6,8 @@ namespace MauiMaterial.Controls;
 
 public class MaterialSwitch : GraphicsView, IMaterialSwitch
 {
-    internal readonly float _defaultTrackWidth = 52f;
-    internal readonly float _defaultTrackHeight = 32f;
+    internal const float _defaultTrackWidth = 52f;
+    internal const float _defaultTrackHeight = 32f;
     const uint ThumbAnimationDuration = 250;
 
     // Animated thumb position: 0 = off (left), 1 = on (right).
@@ -20,14 +21,26 @@ public class MaterialSwitch : GraphicsView, IMaterialSwitch
                 if ((bool)newValue != (bool)oldValue)
                 {
                     ((MaterialSwitch)bindable).AnimateThumbToCheckedState((bool)newValue);
+                    ((MaterialSwitch)bindable).ValueChanged?.Invoke(bindable, new SwitchValueChangedEventArgs((bool)oldValue, (bool)newValue));
                 }
             });
+
+    #region  Property
 
     public bool Value
     {
         get => (bool)GetValue(ValueProperty);
         set => SetValue(ValueProperty, value);
     }
+
+
+    #endregion
+
+    #region Event
+
+    public event EventHandler<SwitchValueChangedEventArgs>? ValueChanged;
+
+    #endregion
 
     public MaterialSwitch()
     {
