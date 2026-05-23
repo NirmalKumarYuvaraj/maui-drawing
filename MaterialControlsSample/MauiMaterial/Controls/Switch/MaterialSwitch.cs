@@ -12,17 +12,15 @@ public class MaterialSwitch : GraphicsView, IMaterialSwitch
 
     // Animated thumb position: 0 = off (left), 1 = on (right).
     internal float _thumbPosition;
-    Animation? _thumbAnimation;
 
     public static readonly BindableProperty ValueProperty =
         BindableProperty.Create(nameof(Value), typeof(bool), typeof(MaterialSwitch), false,
             propertyChanged: (bindable, oldValue, newValue) =>
             {
-                if ((bool)newValue != (bool)oldValue)
-                {
-                    ((MaterialSwitch)bindable).AnimateThumbToCheckedState((bool)newValue);
-                    ((MaterialSwitch)bindable).ValueChanged?.Invoke(bindable, new SwitchValueChangedEventArgs((bool)oldValue, (bool)newValue));
-                }
+                var materialSwitch = (MaterialSwitch)bindable;
+                materialSwitch.AnimateThumbToCheckedState((bool)newValue);
+                materialSwitch.ValueChanged?.Invoke(materialSwitch, new SwitchValueChangedEventArgs((bool)oldValue, (bool)newValue));
+                SemanticScreenReader.Announce((bool)newValue ? "Switch on" : "Switch off");
             });
 
     #region  Property
@@ -49,6 +47,18 @@ public class MaterialSwitch : GraphicsView, IMaterialSwitch
         WidthRequest = _defaultTrackWidth;
         HeightRequest = _defaultTrackHeight;
         _thumbPosition = Value ? 1f : 0f;
+        SemanticProperties.SetDescription(this, "Toggle switch");
+        SemanticProperties.SetHint(this, "Double tap to toggle");
+    }
+
+    protected override void OnHandlerChanging(HandlerChangingEventArgs args)
+    {
+        if (args.NewHandler is null)
+        {
+            this.AbortAnimation("ThumbPosition");
+        }
+
+        base.OnHandlerChanging(args);
     }
 
     void AnimateThumbToCheckedState(bool newCheckedState)
@@ -57,24 +67,22 @@ public class MaterialSwitch : GraphicsView, IMaterialSwitch
 
         // Cancel any in-progress animation.
         this.AbortAnimation("ThumbPosition");
-        _thumbAnimation = null;
 
         if (Handler is null)
         {
             // Not yet attached; snap to target.
             _thumbPosition = target;
-            Invalidate();
             return;
         }
 
         float start = _thumbPosition;
-        _thumbAnimation = new Animation(v =>
+        var animation = new Animation(v =>
         {
             _thumbPosition = (float)v;
             Invalidate();
         }, start, target, Easing.CubicOut);
 
-        _thumbAnimation.Commit(this, "ThumbPosition", 16, ThumbAnimationDuration, finished: (v, cancelled) =>
+        animation.Commit(this, "ThumbPosition", 16, ThumbAnimationDuration, finished: (v, cancelled) =>
         {
             if (!cancelled)
             {
