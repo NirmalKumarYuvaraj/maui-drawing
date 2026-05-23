@@ -10,6 +10,8 @@ public class MaterialSwitch : GraphicsView, IMaterialSwitch
     internal const float _defaultTrackHeight = 32f;
     const uint ThumbAnimationDuration = 250;
 
+    const float HaloInset = 4f;
+
     // Animated thumb position: 0 = off (left), 1 = on (right).
     internal float _thumbPosition;
     // Animated halo opacity: 0 = hidden, 1 = fully visible (pointer hover).
@@ -47,8 +49,8 @@ public class MaterialSwitch : GraphicsView, IMaterialSwitch
         Drawable = new SwitchDrawable(this);
         BackgroundColor = Colors.Red;
         SetupGestureRecognizers();
-        WidthRequest = _defaultTrackWidth;
-        HeightRequest = _defaultTrackHeight;
+        WidthRequest = _defaultTrackWidth + HaloInset * 2;
+        HeightRequest = _defaultTrackHeight + HaloInset * 2;
         _thumbPosition = Value ? 1f : 0f;
         SemanticProperties.SetDescription(this, "Toggle switch");
         SemanticProperties.SetHint(this, "Double tap to toggle");
@@ -58,7 +60,9 @@ public class MaterialSwitch : GraphicsView, IMaterialSwitch
     {
         base.OnHandlerChanged();
         if (Handler is not null && Application.Current is not null)
+        {
             Application.Current.RequestedThemeChanged += OnAppThemeChanged;
+        }
     }
 
     protected override void OnHandlerChanging(HandlerChangingEventArgs args)
@@ -67,8 +71,7 @@ public class MaterialSwitch : GraphicsView, IMaterialSwitch
         {
             this.AbortAnimation("ThumbPosition");
             this.AbortAnimation("HaloOpacity");
-            if (Application.Current is not null)
-                Application.Current.RequestedThemeChanged -= OnAppThemeChanged;
+            Application.Current?.RequestedThemeChanged -= OnAppThemeChanged;
         }
         base.OnHandlerChanging(args);
     }
@@ -108,9 +111,7 @@ public class MaterialSwitch : GraphicsView, IMaterialSwitch
 
     protected override Size MeasureOverride(double widthConstraint, double heightConstraint)
     {
-        var width = double.IsFinite(widthConstraint) ? Math.Min(widthConstraint, _defaultTrackWidth) : _defaultTrackWidth;
-        var height = double.IsFinite(heightConstraint) ? Math.Min(heightConstraint, _defaultTrackHeight) : _defaultTrackHeight;
-        return new Size(width, height);
+        return new Size(_defaultTrackWidth + HaloInset * 2, _defaultTrackHeight + HaloInset * 2);
     }
 
     void SetupGestureRecognizers()
@@ -169,10 +170,10 @@ public class MaterialSwitch : GraphicsView, IMaterialSwitch
             Color thumbOnColor = isDark ? MaterialColors.M3OnPrimaryDark : MaterialColors.M3OnPrimaryLight;
 
             float inset = TrackOutlineWidth / 2f;
-            float trackX = dirtyRect.X + inset;
-            float trackY = dirtyRect.Y + inset;
-            float trackW = dirtyRect.Width - TrackOutlineWidth;
-            float trackH = dirtyRect.Height - TrackOutlineWidth;
+            float trackX = dirtyRect.X + inset + HaloInset;
+            float trackY = dirtyRect.Y + inset + HaloInset;
+            float trackW = dirtyRect.Width - TrackOutlineWidth - HaloInset * 2;
+            float trackH = dirtyRect.Height - TrackOutlineWidth - HaloInset * 2;
             float trackRadius = trackH / 2f;
 
             float t = Math.Clamp(_switch._thumbPosition, 0f, 1f);
@@ -203,15 +204,13 @@ public class MaterialSwitch : GraphicsView, IMaterialSwitch
             float haloOpacity = Math.Clamp(_switch._haloOpacity, 0f, 1f);
             if (haloOpacity > 0f)
             {
-                // M3 hover state layer color: on-surface-variant (off) blends to on-primary (on) at 8% opacity.
-                Color haloBaseOff = isDark ? MaterialColors.M3OnSurfaceVariantDark : MaterialColors.M3OnSurfaceVariantLight;
-                Color haloBaseOn = isDark ? MaterialColors.M3OnPrimaryDark : MaterialColors.M3OnPrimaryLight;
-                Color haloBase = InterpolateColor(haloBaseOff, haloBaseOn, t);
+                // Use OnSurfaceVariant for both on and off states — consistent, visible color at 12% opacity.
+                Color haloBase = isDark ? MaterialColors.M3OnSurfaceVariantDark : MaterialColors.M3OnSurfaceVariantLight;
 
                 const float HaloDiameter = 40f;
                 float thumbCenterX = thumbX + thumbD / 2f;
                 float thumbCenterY = thumbY + thumbD / 2f;
-                canvas.FillColor = new Color(haloBase.Red, haloBase.Green, haloBase.Blue, 0.08f * haloOpacity);
+                canvas.FillColor = new Color(haloBase.Red, haloBase.Green, haloBase.Blue, 0.12f * haloOpacity);
                 canvas.FillEllipse(thumbCenterX - HaloDiameter / 2f, thumbCenterY - HaloDiameter / 2f, HaloDiameter, HaloDiameter);
             }
 
