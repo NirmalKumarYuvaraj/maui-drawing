@@ -15,27 +15,46 @@ public class MaterialCheckBox : GraphicsView, IMaterialCheckBox
     const float OutlineWidth = 2f;
     const uint CheckAnimationDuration = 200;
 
-    // 0 = unchecked, 1 = checked — drives fill, outline fade, and checkmark draw.
+    // 0 = unchecked, 1 = selected (checked or indeterminate).
     internal float _checkProgress;
+    // Morphs the checkmark (0) into the indeterminate dash (1).
+    internal float _indeterminateProgress;
     // 0 = no halo, 1 = full halo (pointer hover).
     internal float _haloOpacity;
 
     public static readonly BindableProperty ValueProperty =
-        BindableProperty.Create(nameof(Value), typeof(bool), typeof(MaterialCheckBox), false,
+        BindableProperty.Create(nameof(Value), typeof(bool?), typeof(MaterialCheckBox), false,
+            defaultBindingMode: BindingMode.TwoWay,
             propertyChanged: (bindable, oldValue, newValue) =>
             {
                 var cb = (MaterialCheckBox)bindable;
-                cb.AnimateCheck((bool)newValue);
-                cb.ValueChanged?.Invoke(cb, new CheckBoxValueChangedEventArgs((bool)oldValue, (bool)newValue));
-                SemanticScreenReader.Announce((bool)newValue ? "Checkbox checked" : "Checkbox unchecked");
+                cb.AnimateCheck((bool?)newValue);
+                cb.ValueChanged?.Invoke(cb, new CheckBoxValueChangedEventArgs((bool?)oldValue, (bool?)newValue));
+                SemanticScreenReader.Announce((bool?)newValue switch
+                {
+                    true => "Checkbox checked",
+                    false => "Checkbox unchecked",
+                    null => "Checkbox indeterminate"
+                });
             });
+
+    public static readonly BindableProperty IsThreeStateProperty =
+        BindableProperty.Create(nameof(IsThreeState), typeof(bool), typeof(MaterialCheckBox), false);
 
     #region Property
 
-    public bool Value
+    /// <summary>Gets or sets the state: true is checked, false is unchecked, and null is indeterminate.</summary>
+    public bool? Value
     {
-        get => (bool)GetValue(ValueProperty);
+        get => (bool?)GetValue(ValueProperty);
         set => SetValue(ValueProperty, value);
+    }
+
+    /// <summary>Gets or sets whether taps cycle through unchecked, checked, and indeterminate.</summary>
+    public bool IsThreeState
+    {
+        get => (bool)GetValue(IsThreeStateProperty);
+        set => SetValue(IsThreeStateProperty, value);
     }
 
     #endregion
@@ -52,7 +71,8 @@ public class MaterialCheckBox : GraphicsView, IMaterialCheckBox
         SetupGestureRecognizers();
         WidthRequest  = BoxSize + 2 * HaloInset;
         HeightRequest = BoxSize + 2 * HaloInset;
-        _checkProgress = Value ? 1f : 0f;
+        _checkProgress = Value != false ? 1f : 0f;
+        _indeterminateProgress = Value is null ? 1f : 0f;
         SemanticProperties.SetDescription(this, "Checkbox");
         SemanticProperties.SetHint(this, "Double tap to toggle");
     }
@@ -78,30 +98,36 @@ public class MaterialCheckBox : GraphicsView, IMaterialCheckBox
 
     void OnAppThemeChanged(object? sender, AppThemeChangedEventArgs e) => Invalidate();
 
-    void AnimateCheck(bool newCheckedState)
+    void AnimateCheck(bool? newCheckedState)
     {
-        float target = newCheckedState ? 1f : 0f;
+        float target = newCheckedState != false ? 1f : 0f;
+        float indeterminateTarget = newCheckedState is null ? 1f : 0f;
 
         this.AbortAnimation("CheckProgress");
 
         if (Handler is null)
         {
             _checkProgress = target;
+            _indeterminateProgress = indeterminateTarget;
+            Invalidate();
             return;
         }
 
         float start = _checkProgress;
+        float indeterminateStart = _indeterminateProgress;
         var animation = new Animation(v =>
         {
-            _checkProgress = (float)v;
+            _checkProgress = start + (target - start) * (float)v;
+            _indeterminateProgress = indeterminateStart + (indeterminateTarget - indeterminateStart) * (float)v;
             Invalidate();
-        }, start, target, Easing.CubicOut);
+        }, 0, 1, Easing.CubicOut);
 
         animation.Commit(this, "CheckProgress", 16, CheckAnimationDuration, finished: (v, cancelled) =>
         {
             if (!cancelled)
             {
                 _checkProgress = target;
+                _indeterminateProgress = indeterminateTarget;
                 Invalidate();
             }
         });
@@ -119,7 +145,12 @@ public class MaterialCheckBox : GraphicsView, IMaterialCheckBox
     {
         GestureRecognizers.Add(new TapGestureRecognizer
         {
-            Command = new Command(() => Value = !Value)
+            Command = new Command(() => Value = Value switch
+            {
+                false => true,
+                true => IsThreeState ? (bool?)null : false,
+                null => !IsThreeState
+            })
         });
 
         var pointer = new PointerGestureRecognizer();
@@ -221,6 +252,10 @@ public class MaterialCheckBox : GraphicsView, IMaterialCheckBox
                 float x0 = boxX + CkStartX, y0 = boxY + CkStartY;
                 float x1 = boxX + CkKneeX,  y1 = boxY + CkKneeY;
                 float x2 = boxX + CkEndX,   y2 = boxY + CkEndY;
+                float indeterminate = Math.Clamp(_checkbox._indeterminateProgress, 0f, 1f);
+                x1 += (boxX + boxS / 2f - x1) * indeterminate;
+                y1 += (boxY + boxS / 2f - y1) * indeterminate;
+                y2 += (boxY + boxS / 2f - y2) * indeterminate;
 
                 var path = new PathF();
                 path.MoveTo(x0, y0);

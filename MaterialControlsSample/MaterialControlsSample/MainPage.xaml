@@ -10,6 +10,12 @@
             <Label Text="Material Switch"
                    FontSize="Large"
                    HorizontalOptions="Center"/>
+            <Label Text="Three-state Material Checkbox"
+                   FontSize="Large"
+                   HorizontalOptions="Center"/>
+            <material:MaterialCheckBox Value="{x:Null}"
+                     IsThreeState="True"
+                     HorizontalOptions="Center"/>
             <material:MaterialSwitch x:Name="materialSwitch"
                     ValueChanged="materialSwitch_ValueChanged"
                                      HorizontalOptions="Center"/>

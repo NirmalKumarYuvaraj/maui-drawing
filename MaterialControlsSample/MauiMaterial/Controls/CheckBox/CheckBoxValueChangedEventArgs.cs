@@ -5,15 +5,15 @@ namespace MauiMaterial.Controls.CheckBox;
 /// </summary>
 public class CheckBoxValueChangedEventArgs : EventArgs
 {
-    public CheckBoxValueChangedEventArgs(bool oldValue, bool newValue)
+    public CheckBoxValueChangedEventArgs(bool? oldValue, bool? newValue)
     {
         OldValue = oldValue;
         NewValue = newValue;
     }
 
-    /// <summary>Gets the previous value of the checkbox before the change.</summary>
-    public bool OldValue { get; }
+    /// <summary>Gets the previous value; null indicates an indeterminate state.</summary>
+    public bool? OldValue { get; }
 
-    /// <summary>Gets the new value of the checkbox after the change.</summary>
-    public bool NewValue { get; }
+    /// <summary>Gets the new value; null indicates an indeterminate state.</summary>
+    public bool? NewValue { get; }
 }
