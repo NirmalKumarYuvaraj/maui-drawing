@@ -1,4 +1,5 @@
 <Solution>
+  <Project Path="../tests/MauiMaterial.Tests/MauiMaterial.Tests.csproj" />
   <Project Path="MaterialControlsSample/MaterialControlsSample.csproj" />
   <Project Path="MauiMaterial/MauiMaterial.csproj" />
 </Solution>
