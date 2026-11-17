@@ -30,12 +30,25 @@ public class MaterialCheckBox : GraphicsView, IMaterialCheckBox
                 SemanticScreenReader.Announce((bool)newValue ? "Checkbox checked" : "Checkbox unchecked");
             });
 
+    public static readonly BindableProperty ActiveColorProperty =
+        BindableProperty.Create(nameof(ActiveColor), typeof(Color), typeof(MaterialCheckBox), null,
+            propertyChanged: (bindable, _, _) => ((MaterialCheckBox)bindable).Invalidate());
+
     #region Property
 
     public bool Value
     {
         get => (bool)GetValue(ValueProperty);
         set => SetValue(ValueProperty, value);
+    }
+
+    /// <summary>
+    /// Gets or sets the checked fill and hover color. When null, the theme's primary color is used.
+    /// </summary>
+    public Color? ActiveColor
+    {
+        get => (Color?)GetValue(ActiveColorProperty);
+        set => SetValue(ActiveColorProperty, value);
     }
 
     #endregion
@@ -166,7 +179,7 @@ public class MaterialCheckBox : GraphicsView, IMaterialCheckBox
         {
             bool isDark = Application.Current?.RequestedTheme == AppTheme.Dark;
 
-            Color primaryColor        = isDark ? MaterialColors.M3PrimaryDark              : MaterialColors.M3PrimaryLight;
+            Color primaryColor        = _checkbox.ActiveColor ?? (isDark ? MaterialColors.M3PrimaryDark : MaterialColors.M3PrimaryLight);
             Color onPrimaryColor      = isDark ? MaterialColors.M3OnPrimaryDark             : MaterialColors.M3OnPrimaryLight;
             // M3 spec: unselected outline uses OnSurfaceVariant, NOT Outline.
             Color onSurfaceVariant    = isDark ? MaterialColors.M3OnSurfaceVariantDark      : MaterialColors.M3OnSurfaceVariantLight;
@@ -190,14 +203,14 @@ public class MaterialCheckBox : GraphicsView, IMaterialCheckBox
                 const float HaloDiameter = 40f;
                 float cx = boxX + boxS / 2f;
                 float cy = boxY + boxS / 2f;
-                canvas.FillColor = new Color(haloBase.Red, haloBase.Green, haloBase.Blue, 0.08f * haloOpacity);
+                canvas.FillColor = new Color(haloBase.Red, haloBase.Green, haloBase.Blue, haloBase.Alpha * 0.08f * haloOpacity);
                 canvas.FillEllipse(cx - HaloDiameter / 2f, cy - HaloDiameter / 2f, HaloDiameter, HaloDiameter);
             }
 
             // 2. Box fill — Primary color, fades in as t → 1.
             if (t > 0f)
             {
-                canvas.FillColor = new Color(primaryColor.Red, primaryColor.Green, primaryColor.Blue, t);
+                canvas.FillColor = new Color(primaryColor.Red, primaryColor.Green, primaryColor.Blue, primaryColor.Alpha * t);
                 canvas.FillRoundedRectangle(boxX, boxY, boxS, boxS, cr);
             }
 
@@ -249,7 +262,8 @@ public class MaterialCheckBox : GraphicsView, IMaterialCheckBox
             return new Color(
                 a.Red   + (b.Red   - a.Red)   * t,
                 a.Green + (b.Green - a.Green) * t,
-                a.Blue  + (b.Blue  - a.Blue)  * t);
+                a.Blue  + (b.Blue  - a.Blue)  * t,
+                a.Alpha + (b.Alpha - a.Alpha) * t);
         }
     }
 }
